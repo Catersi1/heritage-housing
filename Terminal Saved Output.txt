@@ -1,0 +1,48 @@
+Last login: Sat Jan 17 11:27:39 on ttys000
+(base) mizaelcanalespena@Mizaels-Mac-mini ~ % open .
+(base) mizaelcanalespena@Mizaels-Mac-mini ~ % nano customer_app.py
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  UW PICO 5.09                 File: customer_app.py                  Modified  
+
+            if total_income > 2500: score += 20
+            if bankruptcy == "No": score += 20
+            if eviction == "No": score += 30
+    
+            save_lead({
+                "Date": datetime.now().strftime("%Y-%m-%d"),
+                "Name": name, "Phone": phone, "Income": total_income,
+                "Score": score
+            })
+            
+            st.success("✅ Information Received!")
+            if score >= 50:
+                st.write(f"Great news, {name}! You look like a strong candidate$
+            else:
+                st.write(f"Thank you, {name}. A specialist will review your fil$
+        else:   
+            st.error("Please fill in Name, Phone, and Income.")
+                
+              
+
+^G Get Help  ^O WriteOut  ^R Read File ^Y Prev Pg   ^K Cut Text  ^C Cur Pos   
+^X Exit      ^J Justify   ^W Where is  ^V Next Pg   ^U UnCut Text^T To Spell  
