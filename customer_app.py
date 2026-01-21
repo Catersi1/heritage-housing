@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
-import os
 from datetime import datetime
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # --- CONFIGURATION ---
-FILE_PATH = 'web_leads.csv'
+SHEET_NAME = 'Heritage Leads'
 ADMIN_PASSWORD = "heritage"
 
 # CONTACT INFO
@@ -13,18 +14,28 @@ PHONE_1 = "701-441-1388"
 NAME_2 = "Eva"
 PHONE_2 = "405-268-2502"
 
+# --- GOOGLE SHEETS CONNECTION ---
+def get_google_sheet():
+    try:
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        sheet = client.open(SHEET_NAME).sheet1
+        return sheet
+    except Exception as e:
+        st.error(f"⚠️ Error connecting to Google Sheets: {e}")
+        return None
+
 def save_lead(data):
-    if not os.path.exists(FILE_PATH):
-        df = pd.DataFrame(columns=data.keys())
-        df.to_csv(FILE_PATH, index=False)
-    else:
-        df = pd.read_csv(FILE_PATH)
-        for col in data.keys():
-            if col not in df.columns:
-                df[col] = "" 
-    
-    df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
-    df.to_csv(FILE_PATH, index=False)
+    sheet = get_google_sheet()
+    if sheet:
+        # If the sheet is empty (just created), add headers
+        if not sheet.row_values(1):
+            sheet.append_row(list(data.keys()))
+        
+        # Add the data
+        sheet.append_row(list(data.values()))
 
 # --- APP SETUP ---
 st.set_page_config(page_title="Heritage Housing Pre-Qualifier", page_icon="🏡", layout="centered")
@@ -32,7 +43,7 @@ st.set_page_config(page_title="Heritage Housing Pre-Qualifier", page_icon="🏡"
 st.image("https://cdn-icons-png.flaticon.com/512/25/25694.png", width=80) 
 st.title("Heritage Housing: Eligibility Check")
 
-# --- CONTACT BANNER (UPDATED) ---
+# --- CONTACT BANNER ---
 st.info(f"""
 **Questions? Call or Text us directly:**
 * **{NAME_1}:** {PHONE_1}
@@ -54,7 +65,6 @@ with st.form("customer_form", clear_on_submit=True):
     st.subheader("2. Appointment Request")
     want_appt = st.checkbox("I want to schedule a visit to see homes.")
     
-    # MANUAL TEXT BOX logic
     appt_text = ""
     if want_appt:
         appt_text = st.text_input("Preferred Date & Time (e.g., Next Tuesday at 2pm)")
@@ -124,30 +134,16 @@ with st.form("customer_form", clear_on_submit=True):
             if want_appt:
                 st.info(f"🗓️ Appointment Request: **{final_appt_str}**")
             
-            if score > 0:
-                st.write(f"Great news, {name}! We have programs that may work for you. We will text you at {phone}.")
-            else:
-                st.write(f"Thank you, {name}. A specialist will review your file and contact you shortly.")
+            st.write(f"Thank you, {name}! We will review your info and text you at {phone}.")
         else:
             st.error("Please fill in Name, Phone, and Income.")
 
+# --- OWNER LOGIN (Disabled for Public, Logic handles Sheets only) ---
 with st.sidebar:
     st.markdown("---")
     st.caption("Owner Access")
     pwd = st.text_input("Password", type="password")
-    
     if pwd == ADMIN_PASSWORD:
         st.success("Unlocked")
-        if os.path.exists(FILE_PATH):
-            st.write("### 📋 New Leads")
-            df = pd.read_csv(FILE_PATH)
-            
-            cols = list(df.columns)
-            if "Appointment" in cols:
-                cols.insert(4, cols.pop(cols.index("Appointment")))
-                df = df[cols]
-                
-            st.dataframe(df.iloc[::-1]) 
-            st.download_button("Download CSV", df.to_csv(index=False).encode('utf-8'), 'heritage_leads.csv', 'text/csv')
-        else:
-            st.info("No leads yet.")
+        st.write(f"Connected to Sheet: {SHEET_NAME}")
+        st.write("Leads are saving automatically to Google Drive.")
